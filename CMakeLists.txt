@@ -48,6 +48,7 @@ add_executable(Flydigi5Pico
 
 target_sources(Flydigi5Pico PRIVATE
     flydigiHost/Flydigi5Host.c
+    flydigiHost/Flydigi5HID.c
     flydigiDevice/Flydigi5Device.c
     Descriptors/xbox360_descriptors.c
     SRAM/SRAM_Buffer.c
@@ -57,7 +58,7 @@ pico_set_program_name(Flydigi5Pico "Flydigi5Pico")
 pico_set_program_version(Flydigi5Pico "1.0.0")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(Flydigi5Pico 0)
+pico_enable_stdio_uart(Flydigi5Pico 1)
 pico_enable_stdio_usb(Flydigi5Pico 0)
 
 # Link 库
@@ -89,7 +90,7 @@ target_compile_definitions(Flydigi5Pico PRIVATE
 target_include_directories(Flydigi5Pico PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/flydigiHost
-        ${CMAKE_CURRENT_LIST_DIR}/flydigiDevice
+        #${CMAKE_CURRENT_LIST_DIR}/flydigiDevice
         ${CMAKE_CURRENT_LIST_DIR}/Descriptors
         ${CMAKE_CURRENT_LIST_DIR}/SRAM
 )

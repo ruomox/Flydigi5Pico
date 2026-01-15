@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #undef CFG_TUSB_DEBUG
-#define CFG_TUSB_DEBUG            0
+#define CFG_TUSB_DEBUG            2
 
 // --- DEVICE 配置 (模拟 Xbox 360) ---
 #define CFG_TUD_ENABLED           1
@@ -32,13 +32,7 @@ extern "C" {
 #define CFG_TUH_DEVICE_MAX        3
 // 枚举缓冲大小 (256字节足够读取描述符)
 #define CFG_TUH_ENUMERATION_BUFSIZE 256
-// 开启 HID Host (开启 HID 可以让 TinyUSB 解析基础描述符)
-#define CFG_TUH_HID               1
 #define CFG_TUSB_HOST             1
-
-// 数据端点缓冲
-#define CFG_TUH_HID_EPIN_BUFSIZE  64
-#define CFG_TUH_HID_EPOUT_BUFSIZE 64
 
 // 自定义 Flydigi Host
 #define CFG_TUH_FLYDIGI           1
@@ -48,6 +42,12 @@ extern "C" {
 #define CFG_TUH_MSC               0
 #define CFG_TUH_HUB               0
 #define CFG_TUH_VENDOR            0
+// 为了自定义 HID 接管故关闭
+#define CFG_TUH_HID               0
+
+// 原生 HID 数据端点缓冲
+#define CFG_TUH_HID_EPIN_BUFSIZE  64
+#define CFG_TUH_HID_EPOUT_BUFSIZE 64
 
 #ifdef __cplusplus
 }

@@ -500,29 +500,11 @@ void tuh_xinput_report_received_cb(uint8_t dev_addr,
     // 已弃用：数据路径已迁移至 SRAM + Core1
 }
 
-void tuh_hid_report_received_cb(
-    uint8_t dev_addr,
-    uint8_t instance,
-    uint8_t const* report,
-    uint16_t len)
-{
-    // 你现在不用 HID，留空即可
-    (void) dev_addr;
-    (void) instance;
-    (void) report;
-    (void) len;
-}
 // Host 回调
 void tuh_mount_cb(uint8_t dev_addr)
 {
     printf("[HOST] Device %d mounted\n", dev_addr);
     g_host_state = HOST_ATTACHED;
-}
-
-usbh_class_driver_t const* usbh_app_driver_get_cb(uint8_t* driver_count)
-{
-*driver_count = 1;
-return &flydigi_driver_h;
 }
 
 #endif /* TUSB_OPT_HOST_ENABLED && CFG_TUH_FLYDIGI */

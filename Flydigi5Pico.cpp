@@ -9,7 +9,8 @@
 #include "pico/bootrom.h"
 // 引入 Host 与 Device 模块
 #include "Flydigi5Host.h"
-#include "Flydigi5Device.h"
+#include "Flydigi5HID.h"
+// #include "Flydigi5Device.h"
 // 引入 SRAM 模块
 #include "SRAM_Buffer.h"
 #include "SRAM_Shared.h"
@@ -75,51 +76,51 @@ void usb_force_reset_bus(void)
 // }
 // // ========== [延迟测试] ==========
 
-// ============================================================
-// [Core1] Device
-// ============================================================
-void core1_main(void)
-{
-    // // ========== [延迟测试] ==========
-    // uint32_t last_ts = 0;
-    // // ========== [延迟测试] ==========
+// // ============================================================
+// // [Core1] Device
+// // ============================================================
+// void core1_main(void)
+// {
+//     // // ========== [延迟测试] ==========
+//     // uint32_t last_ts = 0;
+//     // // ========== [延迟测试] ==========
 
-    sleep_ms(100);
+//     sleep_ms(100);
 
-    // 初始化 Device 栈 (Port 0)
-    // 放在这里初始化是最安全的
-    tud_init(0);
+//     // 初始化 Device 栈 (Port 0)
+//     // 放在这里初始化是最安全的
+//     tud_init(0);
 
-    FlydigiDevice_Init(); // 初始化状态变量
+//     FlydigiDevice_Init(); // 初始化状态变量
 
-    while (true) {
-        // 主 Device 模块
-        FlydigiDevice_Task();
+//     while (true) {
+//         // 主 Device 模块
+//         FlydigiDevice_Task();
 
-        // // ========== [延迟测试] ==========
-        // // ** 会影响轮询率 仅用作跨核延迟测量 实际使用需关闭 **
-        // sram_gamepad_t gp;
-        // bool is_new = sram_buffer_read(&g_sram_input, &gp);
-        // uint32_t ts  = sram_buffer_get_timestamp(&g_sram_input);
-        // // 端到端内部延迟计算
-        // uint32_t latency_us = time_us_32() - ts;
-        // // 过滤：Host 还没写过任何有效时间戳时，不输出
-        // if (ts == 0)
-        // {
-        //     sleep_ms(SRAM_DEBUG_PERIOD_MS);
-        //     continue;
-        // }
-        // // 可选：只在时间戳变化时输出（更干净）
-        // if (ts != last_ts)
-        // {
-        //     last_ts = ts;
-        //     print_gp(is_new ? "NEW " : "HOLD", &gp, latency_us);
-        // }
-        // sleep_ms(SRAM_DEBUG_PERIOD_MS);
-        // // ========== [延迟测试] ==========
+//         // // ========== [延迟测试] ==========
+//         // // ** 会影响轮询率 仅用作跨核延迟测量 实际使用需关闭 **
+//         // sram_gamepad_t gp;
+//         // bool is_new = sram_buffer_read(&g_sram_input, &gp);
+//         // uint32_t ts  = sram_buffer_get_timestamp(&g_sram_input);
+//         // // 端到端内部延迟计算
+//         // uint32_t latency_us = time_us_32() - ts;
+//         // // 过滤：Host 还没写过任何有效时间戳时，不输出
+//         // if (ts == 0)
+//         // {
+//         //     sleep_ms(SRAM_DEBUG_PERIOD_MS);
+//         //     continue;
+//         // }
+//         // // 可选：只在时间戳变化时输出（更干净）
+//         // if (ts != last_ts)
+//         // {
+//         //     last_ts = ts;
+//         //     print_gp(is_new ? "NEW " : "HOLD", &gp, latency_us);
+//         // }
+//         // sleep_ms(SRAM_DEBUG_PERIOD_MS);
+//         // // ========== [延迟测试] ==========
 
-    }
-}
+//     }
+// }
 
 // ============================================================
 // [Core0] Host
@@ -129,6 +130,9 @@ int main(void)
     set_sys_clock_khz(120000, true);
 
     stdio_init_all();
+
+    // Add for Test Hid
+    uint8_t hid_buf[64];
 
     printf("\n=== Flydigi XInput Host Driver Start ===\n");
 
@@ -156,14 +160,26 @@ int main(void)
 
     sleep_ms(200);
 
-    // 启动 Core1
-    multicore_launch_core1(core1_main);
+    // // 启动 Core1
+    // multicore_launch_core1(core1_main);
 
     while (true)
 
     {   
         // 主 Host 进程
         FlydigiHost_Task();
+
+        // ========== [测试Hid] ==========
+        Flydigi_HID_Task();
+
+        // 读取 HID 数据
+        uint8_t hid_len = flydigi_hid_get_report(hid_buf);
+        if (hid_len > 0) {
+            printf("[HID] ");
+            for(int i=0; i<8; i++) printf("%02X ", hid_buf[i]);
+            printf("\n");
+        }
+        // ========== [测试Hid] ==========
         
         // // ========== [后门] UART 监听重启指令 ==========
         // int c = getchar_timeout_us(0);
@@ -176,6 +192,21 @@ int main(void)
         // // ========== [后门] UART 监听重启指令 ==========  
     }
     return 0;
+}
+
+// =============================================================
+// [核心修复] 统一驱动注册
+// =============================================================
+extern "C" usbh_class_driver_t const* usbh_app_driver_get_cb(uint8_t* driver_count) {
+    // 这里必须定义一个静态数组，包含所有自定义驱动的结构体
+    // 注意：不是指针数组，是结构体数组！
+    static const usbh_class_driver_t driver_table[] = {
+        flydigi_driver_h,      // Interface 0
+        flydigi_hid_driver     // Interface 1
+    };
+
+    *driver_count = 1; // 驱动数量
+    return driver_table; // 返回数组首地址
 }
 
 
