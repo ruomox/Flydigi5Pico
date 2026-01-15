@@ -1,6 +1,6 @@
 # Flydigi5Pico
 
-**Language:** English | [中文](README.zh_CN.md)
+🌍 English | [简体中文](./README.md)
 
 A low-latency, hardware-based USB protocol bridge designed to force **macOS**
 compatibility for the **Flydigi Vader 5 Pro** controller.
