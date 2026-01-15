@@ -54,7 +54,7 @@ target_sources(Flydigi5Pico PRIVATE
 )
 
 pico_set_program_name(Flydigi5Pico "Flydigi5Pico")
-pico_set_program_version(Flydigi5Pico "1.2.1")
+pico_set_program_version(Flydigi5Pico "1.0.0")
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(Flydigi5Pico 0)
