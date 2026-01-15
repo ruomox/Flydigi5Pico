@@ -4,6 +4,13 @@
 
 这是一个基于硬件的低延迟 USB 协议桥接项目，旨在解决 **飞智黑武士 5 Pro** 手柄在 **macOS** 下无法被系统识别的问题。 项目通过 RP2350 微控制器，将飞智接收器的专有 XInput 协议转换为 macOS 原生支持的 Xbox 手柄接口，无需安装驱动或修改系统。
 
+This is a hardware-based, low-latency USB protocol bridge designed to address
+the issue where the **Flydigi Vader 5 Pro** controller is not recognized by
+**macOS**. By leveraging an RP2350 microcontroller, the project translates the
+Flydigi receiver’s proprietary XInput protocol into a standard Xbox controller
+interface that is natively supported by macOS, without requiring any drivers or
+system modifications.
+
 ---
 
 ## 🎯 问题背景
