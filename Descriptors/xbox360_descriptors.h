@@ -1,3 +1,5 @@
+// xbox360_descriptors.h
+
 #ifndef XBOX360_DESCRIPTORS_H_
 #define XBOX360_DESCRIPTORS_H_
 

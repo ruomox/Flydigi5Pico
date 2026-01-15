@@ -1,3 +1,5 @@
+// xbox360_descriptors.c
+
 #include "tusb.h"
 #include "xbox360_descriptors.h"
 
