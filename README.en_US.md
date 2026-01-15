@@ -19,65 +19,113 @@ descriptor, the device is ignored by the system.
 
 ---
 
-## 🛠 Technical Solution
+## 🛠 Technical Architecture
 
-This project runs on an **RP2350** microcontroller (tested with
-**Waveshare RP2350-USB-A**) and acts as an external USB protocol bridge
-between the Flydigi dongle and macOS.
+This project runs on the **RP2350** microcontroller (recommended and tested on  
+the **Waveshare RP2350-USB-A** board) and implements a stable, low-latency
+**external USB protocol bridge** by running **USB Host and USB Device stacks
+simultaneously on the same chip**.
 
-It does **not** modify macOS, install drivers, or use kernel extensions.
-All functionality is implemented purely as an external USB device,
-based on standard USB specifications.
-
-### Data Flow
-
-1. **Input (USB Host)**  
-   The RP2350 uses a software-defined USB Host (PIO-USB) to read raw
-   **XInput-compatible** data packets from the Flydigi wireless dongle.
-
-2. **Processing (Dual-Core IPC)**  
-   Parsed controller state is transferred between cores using a
-   lock-free shared memory buffer.
-
-3. **Output (USB Device)**  
-   The RP2350 enumerates as a standard **Xbox 360 Wired Controller**
-   (VID `0x045E`, PID `0x028E`), which is natively supported by macOS.
-
-> **Note:**  
-> This project is intended **only for macOS**.  
-> Windows already supports the Flydigi dongle natively and does not
-> benefit from this bridge.
+Unlike traditional USB OTG designs that switch between Host *or* Device modes,
+this architecture fully decouples the two roles and executes them in parallel.
 
 ---
 
 ## ⚡ Architecture & Performance
 
-The firmware leverages the **dual-core architecture** of the RP2350 to
-ensure deterministic input polling and minimal latency.
+The firmware fully exploits the RP2350’s hardware capabilities to build a
+**dual-core, simultaneous TinyUSB dual-stack architecture**, ensuring that
+input polling is never blocked by output transmission.
 
-### 1. Dual-Core Pipeline
+### 1. Simultaneous Host / Device Dual-Stack Operation
 
-- **Core 0 – Input Engine**
-  - Runs the `pico-pio-usb` USB Host stack.
-  - Polls the Flydigi receiver at a strict **1000 Hz (1 ms interval)**.
-  - Parses raw packets into a normalized gamepad state structure.
+Unlike conventional designs that can only operate as a USB Host or Device at
+any given time, this project runs **both protocol stacks concurrently** on
+separate cores:
 
-- **Core 1 – Output Engine**
-  - Runs the native TinyUSB **Device** stack.
-  - Spoofs USB descriptors to emulate an Xbox 360 controller.
-  - Handles outgoing **Rumble (Vibration)** packets from macOS.
+- **Core 0 — Host Stack**
+  - Runs the **TinyUSB Host stack (`tusb_host`)**
+  - Uses the RP2350’s **PIO (Programmable I/O)** to implement the USB signaling
+    layer (Software PHY)
+  - Drives the USB bus entirely in software to communicate with the Flydigi
+    wireless receiver
+  - The logical Host stack is completely decoupled from the native USB
+    controller
 
-### 2. Lock-Free IPC (Seqlock)
+- **Core 1 — Device Stack**
+  - Runs the **TinyUSB Device stack (`tusb_device`)**
+  - Uses the RP2350’s native USB controller
+  - Enumerates as a **wired Xbox 360 controller**
+    (VID `0x045E`, PID `0x028E`)
+  - Communicates with macOS through standard, natively supported USB interfaces
 
-To avoid latency introduced by mutexes or queues, the two cores communicate
-using a **Seqlock (Sequence Lock)** mechanism:
+---
 
-- **Write:** Core 0 writes the latest state and increments a sequence counter
-  without blocking.
-- **Read:** Core 1 retries immediately if a write occurs during read.
-- **Result:** Zero blocking and minimal cache contention.
+### 2. Physical “Hard Reset” Mechanism
 
-**Measured end-to-end latency:** ~**2 ms**.
+A common issue with third-party wireless dongles is unreliable initialization
+after a soft reboot.
+
+- **Problem**  
+  Resetting the USB protocol stack in software alone does not guarantee that the
+  dongle returns to a clean, known state.
+
+- **Solution**  
+  The firmware performs a **physical USB bus reset** during startup.
+
+- **Implementation**  
+  Before initializing the USB stack, the firmware directly drives the **D+ / D−**
+  lines low via GPIO, forcing an **SE0 state**. This behavior mimics a real
+  unplug/replug cycle and forces the dongle to fully reset.
+
+- **Result**  
+  Significantly improved initialization reliability and elimination of random
+  connection failures.
+
+---
+
+### 3. Custom XInput Host Driver (`Flydigi5Host`)
+
+A custom Host driver is required because the Flydigi wireless receiver is **not
+a standard HID device**.
+
+- **Reason**  
+  The receiver does not use the USB HID class (Class `0x03`). Instead, it exposes
+  a **Vendor-Specific XInput interface**
+  (Class `0xFF`, SubClass `0x5D`).  
+  Generic HID drivers will ignore this device entirely.
+
+- **Implementation**  
+  The project implements a dedicated Host class driver, `Flydigi5Host`, which:
+  - Performs the required handshake with the Vendor-Specific interface
+  - Parses the proprietary raw data packets
+  - Extracts and normalizes controller input state
+
+---
+
+### 4. Lock-Free Dual-Core Communication (Seqlock)
+
+To avoid latency introduced by mutexes or message queues, inter-core
+communication uses a **Seqlock (Sequence Lock)** mechanism:
+
+- **Write (Core 0)**  
+  Writes the latest controller state and updates the sequence counter without
+  ever blocking
+
+- **Read (Core 1)**  
+  Retries immediately if a write occurs during a read operation
+
+- **Result**  
+  Zero blocking, low jitter, and minimal cache contention
+
+**Measured end-to-end physical latency: ~2 ms**
+
+---
+
+> **Note:**  
+> This project is intended **only for macOS**.  
+> Windows provides native support for the Flydigi wireless receiver, and this
+> bridge offers no additional benefit on that platform.
 
 ---
 
@@ -108,7 +156,7 @@ No soldering or hardware modification is required.
 
 ```bash
 # Clone with submodules (required for pico-pio-usb)
-git clone --recursive https://github.com/your-username/Flydigi5Pico.git
+git clone --recursive https://github.com/ruomox/Flydigi5Pico.git
 cd Flydigi5Pico
 
 mkdir build
