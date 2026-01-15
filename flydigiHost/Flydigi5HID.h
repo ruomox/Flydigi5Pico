@@ -1,3 +1,5 @@
+// Flydigi5HID.h
+
 #ifndef _FLYDIGI_HID_H_
 #define _FLYDIGI_HID_H_
 
