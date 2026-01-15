@@ -145,7 +145,7 @@ macOS 不提供通用的 XInput 回退路径，一旦描述符不匹配，
 
 ```bash
 # 必须递归拉取子模块（包含 pico-pio-usb）
-git clone --recursive https://github.com/your-username/Flydigi5Pico.git
+git clone --recursive https://github.com/ruomox/Flydigi5Pico.git
 cd Flydigi5Pico
 
 mkdir build
